@@ -21,15 +21,7 @@ export function validateRequest(input = {}) {
   if (!clean(input.neededBy)) errors.neededBy = "Select the date needed.";
   if (!clean(input.reason)) errors.reason = "Enter a business reason.";
 
-  if (!["Low", "Normal", "High"].includes(normalizePriority(input.priority))) {
-    errors.priority = "Select Low, Normal, or High priority.";
-  }
-
   return errors;
-}
-
-function normalizePriority(value) {
-  return clean(value) || "Normal";
 }
 
 function createId() {
@@ -52,7 +44,7 @@ export function createRequest(input, options = {}) {
     equipment: clean(input.equipment),
     neededBy: clean(input.neededBy),
     reason: clean(input.reason),
-    priority: normalizePriority(input.priority),
+    ...(typeof input.priority === "string" ? { priority: input.priority } : {}),
     createdAt: now.toISOString(),
   };
 }
@@ -61,25 +53,29 @@ export function appendRequest(requests, request) {
   return [request, ...requests];
 }
 
-export function loadRequests(storage = globalThis.localStorage) {
-  if (!storage) return [];
+export function filterRequestsByPriority(requests, priority) {
+  return priority === "All"
+    ? [...requests]
+    : requests.filter((request) => request.priority === priority);
+}
 
+export function loadRequests(storage) {
   try {
+    storage = storage === undefined ? globalThis.localStorage : storage;
+    if (!storage) return [];
     const stored = storage.getItem(STORAGE_KEY);
     if (!stored) return [];
 
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.filter(isRequestRecord).map((request) => ({
-      ...request,
-      priority: normalizePriority(request.priority),
-    })) : [];
+    return Array.isArray(parsed) ? parsed.filter(isRequestRecord) : [];
   } catch {
     return [];
   }
 }
 
-export function saveRequests(requests, storage = globalThis.localStorage) {
-  if (!storage) return;
+export function saveRequests(requests, storage) {
+  storage = storage === undefined ? globalThis.localStorage : storage;
+  if (!storage) throw new Error("Browser storage is unavailable.");
   storage.setItem(STORAGE_KEY, JSON.stringify(requests));
 }
 

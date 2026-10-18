@@ -2,6 +2,7 @@ import {
   RequestValidationError,
   appendRequest,
   createRequest,
+  filterRequestsByPriority,
   loadRequests,
   saveRequests,
 } from "./request-store.js";
@@ -13,8 +14,12 @@ const count = document.querySelector("#request-count");
 const emptyState = document.querySelector("#empty-state");
 const tableWrapper = document.querySelector("#request-table-wrapper");
 const tableBody = document.querySelector("#request-table-body");
+const priorityFilter = document.querySelector("#priority-filter");
+const noMatches = document.querySelector("#no-priority-matches");
 
 let requests = loadRequests();
+priorityFilter.value = "All";
+priorityFilter.addEventListener("change", renderRequests);
 
 neededByInput.min = new Date().toISOString().slice(0, 10);
 renderRequests();
@@ -28,8 +33,9 @@ form.addEventListener("submit", (event) => {
 
   try {
     const request = createRequest(input);
-    requests = appendRequest(requests, request);
-    saveRequests(requests);
+    const updatedRequests = appendRequest(requests, request);
+    saveRequests(updatedRequests);
+    requests = updatedRequests;
     form.reset();
     neededByInput.min = new Date().toISOString().slice(0, 10);
     setMessage("Request added.");
@@ -48,11 +54,13 @@ form.addEventListener("submit", (event) => {
 });
 
 function renderRequests() {
-  const hasRequests = requests.length > 0;
-  count.textContent = `${requests.length} ${requests.length === 1 ? "request" : "requests"}`;
-  emptyState.hidden = hasRequests;
+  const visibleRequests = filterRequestsByPriority(requests, priorityFilter.value);
+  const hasRequests = visibleRequests.length > 0;
+  count.textContent = `${visibleRequests.length} ${visibleRequests.length === 1 ? "request" : "requests"}`;
+  emptyState.hidden = hasRequests || priorityFilter.value !== "All";
+  noMatches.hidden = hasRequests || priorityFilter.value === "All";
   tableWrapper.hidden = !hasRequests;
-  tableBody.replaceChildren(...requests.map(createRequestRow));
+  tableBody.replaceChildren(...visibleRequests.map(createRequestRow));
 }
 
 function createRequestRow(request) {
@@ -62,7 +70,7 @@ function createRequestRow(request) {
     request.department,
     request.equipment,
     formatDate(request.neededBy),
-    request.priority,
+    request.priority ?? "",
     request.reason,
     formatDateTime(request.createdAt),
   ];

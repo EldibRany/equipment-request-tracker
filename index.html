@@ -103,6 +103,17 @@
           <p id="request-count" class="request-count">0 requests</p>
         </div>
 
+        <div class="field">
+          <label for="priority-filter">Priority</label>
+          <select id="priority-filter">
+            <option value="All" selected>All</option>
+            <option value="High">High</option>
+            <option value="Normal">Normal</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <p id="no-priority-matches" class="empty-state" role="status" hidden>No requests match this priority.</p>
+
         <div id="empty-state" class="empty-state">
           <h3>No requests yet</h3>
           <p>Add the first equipment request using the form.</p>
@@ -134,6 +145,18 @@
       </div>
     </footer>
 
+    <script>
+      // Modules may be blocked on file:// pages, so this message uses a classic script.
+      if (window.location.protocol === "file:") {
+        const message = document.querySelector("#form-message");
+        message.textContent = "Open this app at http://127.0.0.1:8000 after running npm start. Opening index.html directly does not support reliable saving.";
+        message.classList.add("error");
+        document.querySelector("#request-form").addEventListener("submit", (event) => {
+          event.preventDefault();
+        });
+        document.querySelector('button[type="submit"]').disabled = true;
+      }
+    </script>
     <script type="module" src="src/app.js"></script>
   </body>
 </html>
