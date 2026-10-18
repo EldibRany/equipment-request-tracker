@@ -44,6 +44,7 @@ export function createRequest(input, options = {}) {
     equipment: clean(input.equipment),
     neededBy: clean(input.neededBy),
     reason: clean(input.reason),
+    ...(typeof input.priority === "string" ? { priority: input.priority } : {}),
     createdAt: now.toISOString(),
   };
 }
@@ -52,10 +53,16 @@ export function appendRequest(requests, request) {
   return [request, ...requests];
 }
 
-export function loadRequests(storage = globalThis.localStorage) {
-  if (!storage) return [];
+export function filterRequestsByPriority(requests, priority) {
+  return priority === "All"
+    ? [...requests]
+    : requests.filter((request) => request.priority === priority);
+}
 
+export function loadRequests(storage) {
   try {
+    storage = storage === undefined ? globalThis.localStorage : storage;
+    if (!storage) return [];
     const stored = storage.getItem(STORAGE_KEY);
     if (!stored) return [];
 
@@ -66,8 +73,9 @@ export function loadRequests(storage = globalThis.localStorage) {
   }
 }
 
-export function saveRequests(requests, storage = globalThis.localStorage) {
-  if (!storage) return;
+export function saveRequests(requests, storage) {
+  storage = storage === undefined ? globalThis.localStorage : storage;
+  if (!storage) throw new Error("Browser storage is unavailable.");
   storage.setItem(STORAGE_KEY, JSON.stringify(requests));
 }
 
