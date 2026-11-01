@@ -6,9 +6,10 @@ import {
   STORAGE_KEY,
   appendRequest,
   createRequest,
+  filterRequestsByPriority,
   loadRequests,
   saveRequests,
-} from "../src/request-store.js";
+} from "./src/request-store.js";
 
 const validInput = {
   requester: "  Jordan Lee  ",
@@ -43,7 +44,6 @@ test("createRequest trims input and adds system fields", () => {
     equipment: "Laptop",
     neededBy: "2026-09-15",
     reason: "Replace a failed field computer.",
-    priority: "Normal",
     createdAt: "2026-08-17T12:00:00.000Z",
   });
 });
@@ -86,12 +86,12 @@ test("loadRequests safely handles damaged stored data", () => {
   assert.deepEqual(loadRequests(storage), []);
 });
 
-
-test("createRequest defaults missing priority to Normal", () => {
-  assert.equal(createRequest(validInput).priority, "Normal");
+test("createRequest does not infer a missing priority", () => {
+  const request = createRequest(validInput);
+  assert.equal(Object.hasOwn(request, "priority"), false);
 });
 
-test("each priority survives storage and reload", () => {
+test("each assigned valid priority survives storage and reload", () => {
   for (const priority of ["Low", "Normal", "High"]) {
     const storage = new MemoryStorage();
     const request = createRequest({ ...validInput, priority });
@@ -101,17 +101,24 @@ test("each priority survives storage and reload", () => {
   }
 });
 
-test("createRequest rejects an unsupported priority", () => {
-  assert.throws(
-    () => createRequest({ ...validInput, priority: "Urgent" }),
-    (error) => error instanceof RequestValidationError && Boolean(error.errors.priority),
-  );
+test("unrecognized saved priorities stay unchanged and remain visible under All", () => {
+  const storage = new MemoryStorage();
+  const request = { ...createRequest(validInput), priority: "Urgent" };
+  saveRequests([request], storage);
+
+  const loaded = loadRequests(storage);
+  assert.deepEqual(loaded, [request]);
+  assert.deepEqual(filterRequestsByPriority(loaded, "All"), [request]);
+  assert.deepEqual(filterRequestsByPriority(loaded, "High"), []);
 });
 
-test("older stored requests load as Normal without losing their fields", () => {
+test("older stored requests without a priority remain unchanged", () => {
   const storage = new MemoryStorage();
-  const request = createRequest(validInput);
-  const { priority, ...legacyRequest } = request;
+  const legacyRequest = createRequest(validInput);
   saveRequests([legacyRequest], storage);
-  assert.deepEqual(loadRequests(storage), [{ ...legacyRequest, priority: "Normal" }]);
+
+  const loaded = loadRequests(storage);
+  assert.deepEqual(loaded, [legacyRequest]);
+  assert.equal(Object.hasOwn(loaded[0], "priority"), false);
+  assert.deepEqual(filterRequestsByPriority(loaded, "All"), [legacyRequest]);
 });
